@@ -158,7 +158,7 @@
           />
           <label for="MapLeftPicker-{{ position }}" class="ml-2">Left Team</label>
         </div>
-        @if (data.type === "Future" || (data.type === "Present" && position === "right")) {
+        @if (data.type === "Future" || (data.type === "Present" && position !== "center")) {
           <div>
             <p-radiobutton
               name="picker-{{ position }}"
