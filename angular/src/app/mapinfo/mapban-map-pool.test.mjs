@@ -61,6 +61,15 @@ test("BO5 completed series keeps three most recent results",()=>{
   assert.deepEqual([r.left.map,r.center.map,r.right.map],["Map3","Map4","Map5"]);
   assert.equal(r.currentMapNumber,null);
 });
+test("series ending early does not invent an unplayed current map",()=>{
+  const bo3=project("bo3",[[13,8],[13,6]]);
+  assert.equal(bo3.currentMapNumber,null);
+  assert.deepEqual([bo3.left.type,bo3.center.type,bo3.right.type],["Past","Past","Disabled"]);
+  const bo5=project("bo5",[[13,8],[13,9],[13,11]]);
+  assert.equal(bo5.currentMapNumber,null);
+  assert.deepEqual([bo5.left.map,bo5.center.map,bo5.right.map],["Map1","Map2","Map3"]);
+});
+
 test("scores and map picker follow tricodes not MapBan team slots",()=>{
   const original=build("bo3",[[13,9]]);
   original.teams=[{tricode:"BRV"},{tricode:"ALP"}];
