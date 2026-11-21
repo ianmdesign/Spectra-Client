@@ -63,6 +63,10 @@ export class ElectronService {
     );
   }
 
+  public updateMapPool(maps: any[]) {
+    this.api.updateMapPool(maps);
+  }
+
   public openExternalLink(link: string) {
     this.api.openExternalLink(link);
   }
