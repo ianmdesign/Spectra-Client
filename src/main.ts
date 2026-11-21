@@ -144,6 +144,12 @@ const createWindow = () => {
   win.menuBarVisible = false;
 
   ipcMain.on("process-inputs", processInputs);
+  // Live map picks/scores from the configured MapBan session. The connected
+  // observer is already authenticated with Spectra Server.
+  ipcMain.on("update-map-pool", (_event: any, maps: any[]) => {
+    if (!Array.isArray(maps) || maps.length !== 3) return;
+    connService.sendToIngest({ type: DataTypes.MAP_POOL_UPDATE, data: maps });
+  });
   ipcMain.on("process-aux-inputs", processAuxInputs);
   ipcMain.on("config-drop", processConfigDrop);
   ipcMain.on("process-log", processLog);
