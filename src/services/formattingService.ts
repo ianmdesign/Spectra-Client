@@ -193,6 +193,7 @@ export interface IFormattedData {
     | IFormattedScore
     | IFormattedAbilities
     | IFormattedAuxScoreboardTeam
+    | { type: string; map?: string; logo?: string; left?: { score: number; logo: string }; right?: { score: number; logo: string } }[]
     | boolean
     | string
     | number;
@@ -251,6 +252,7 @@ export enum DataTypes {
   SCORE = "score",
   GAME_MODE = "game_mode",
   MAP = "map",
+  MAP_POOL_UPDATE = "map_pool_update",
   OBSERVING = "observing",
   SPIKE_DETONATED = "spike_detonated",
   SPIKE_DEFUSED = "spike_defused",
