@@ -1,4 +1,6 @@
-import { ChangeDetectorRef, Component, OnInit } from "@angular/core";
+import { ChangeDetectorRef, Component, OnInit, OnDestroy } from "@angular/core";
+import { io, Socket } from "socket.io-client";
+import { projectMapBanPool, MapBanSessionSnapshot } from "../mapinfo/mapban-map-pool";
 import { FormsModule } from "@angular/forms";
 import { InputTextModule } from "primeng/inputtext";
 import { FloatLabelModule } from "primeng/floatlabel";
@@ -73,12 +75,19 @@ import { RoundwinboxComponent } from "../roundwinbox/roundwinbox.component";
   templateUrl: "./observer.component.html",
   styleUrl: "./observer.component.css",
 })
-export class ObserverComponent implements OnInit {
+export class ObserverComponent implements OnInit, OnDestroy {
   protected spectraStatus: Status = { message: "Initializing", statusType: StatusTypes.NEUTRAL };
   protected gameStatus: Status = { message: "Waiting", statusType: StatusTypes.NEUTRAL };
   protected darkModeEnabled: boolean = false;
   protected editable: boolean = true;
   protected tryingToConnect: boolean = false;
+
+  protected mapBanEndpoint = "https://pcmtmapban.ianmlxdesign.ca";
+  protected mapBanSessionId = "";
+  protected mapBanAutoSync = false;
+  protected mapBanSyncStatus = "Enter a MapBan session ID to load map picks";
+  protected mapBanSyncWarning = "";
+  private mapBanSocket: Socket | null = null;
 
   protected isSupporter: boolean = false;
 
@@ -338,6 +347,9 @@ export class ObserverComponent implements OnInit {
     this.leftMap = this.localStorageService.getItem<MapInfo>("leftMap") || this.leftMap;
     this.centerMap = this.localStorageService.getItem<MapInfo>("centerMap") || this.centerMap;
     this.rightMap = this.localStorageService.getItem<MapInfo>("rightMap") || this.rightMap;
+    this.mapBanEndpoint = this.localStorageService.getItem<string>("mapBanEndpoint") || this.mapBanEndpoint;
+    this.mapBanSessionId = this.localStorageService.getItem<string>("mapBanSessionId") || "";
+    this.mapBanAutoSync = this.localStorageService.getItem<boolean>("mapBanAutoSync") === true;
     this.hotkeys = this.localStorageService.getItem<Hotkeys>("hotkeys") || this.hotkeys;
     if (!this.hotkeys.enabled) {
       this.hotkeys.enabled = {
@@ -392,6 +404,7 @@ export class ObserverComponent implements OnInit {
   }
 
   ngOnInit() {
+    if (this.mapBanAutoSync && this.mapBanSessionId) this.connectMapBan();
     this.electron.spectraStatusMessage.subscribe((status: Status) => {
       if (status.statusType === StatusTypes.GREEN) {
         if (ingestServerOptions.includes(this.basicInfo.ingestIp || "")) {
@@ -462,6 +475,104 @@ export class ObserverComponent implements OnInit {
       type: this.roundWinBox.type,
       sponsors: [roundWinBoxFirstSponsor],
     };
+  }
+
+  ngOnDestroy() {
+    this.mapBanSocket?.disconnect();
+    this.mapBanSocket = null;
+  }
+
+  protected saveMapBanSettings() {
+    this.localStorageService.setItem("mapBanEndpoint", this.mapBanEndpoint.trim());
+    this.localStorageService.setItem("mapBanSessionId", this.mapBanSessionId.trim().toUpperCase());
+    this.localStorageService.setItem("mapBanAutoSync", this.mapBanAutoSync);
+  }
+
+  protected toggleMapBanSync() {
+    this.saveMapBanSettings();
+    if (this.mapBanAutoSync) this.connectMapBan();
+    else {
+      this.mapBanSocket?.disconnect();
+      this.mapBanSocket = null;
+      this.mapBanSyncStatus = "MapBan syncing disabled. Manual map pool remains available.";
+      this.mapBanSyncWarning = "";
+    }
+  }
+
+  protected connectMapBan() {
+    this.saveMapBanSettings();
+    this.mapBanSocket?.disconnect();
+    this.mapBanSocket = null;
+    if (!this.mapBanAutoSync) {
+      this.mapBanSyncStatus = "Enable MapBan sync to load the selected session.";
+      return;
+    }
+    const sessionId = this.mapBanSessionId.trim().toUpperCase();
+    if (!/^[A-Z0-9]{4,20}$/.test(sessionId)) {
+      this.mapBanSyncStatus = "Enter a valid MapBan session ID.";
+      return;
+    }
+    let endpoint: URL;
+    try {
+      endpoint = new URL(this.mapBanEndpoint.trim());
+      if (endpoint.protocol !== "https:" &&
+          !(endpoint.protocol === "http:" && ["localhost", "127.0.0.1"].includes(endpoint.hostname))) {
+        throw new Error("Use HTTPS");
+      }
+    } catch {
+      this.mapBanSyncStatus = "Enter a valid HTTPS MapBan server URL.";
+      return;
+    }
+    this.mapBanSyncStatus = "Connecting to MapBan session " + sessionId + "…";
+    this.mapBanSyncWarning = "";
+    const socket = io(endpoint.origin, {
+      autoConnect: false,
+      reconnection: true,
+      transports: ["websocket", "polling"],
+    });
+    this.mapBanSocket = socket;
+    socket.on("connect", () => {
+      socket.emit("logon", { sessionId });
+      this.mapBanSyncStatus = "Connected; loading MapBan picks…";
+      this.changeDetectorRef.detectChanges();
+    });
+    socket.on("session_data", (payload: MapBanSessionSnapshot) => {
+      if (this.mapBanSocket !== socket || !this.mapBanAutoSync) return;
+      try {
+        const pool = projectMapBanPool(payload, this.leftTeamInfo.tricode, this.rightTeamInfo.tricode);
+        this.leftMap = pool.left;
+        this.centerMap = pool.center;
+        this.rightMap = pool.right;
+        this.tournamentInfo.showMappool = true;
+        this.mapBanSyncWarning = pool.warning;
+        this.mapBanSyncStatus = pool.currentMapNumber === null
+          ? "MapBan: all series maps scored"
+          : `MapBan: map ${pool.currentMapNumber} of ${pool.mapCount} is current`;
+        this.localStorageService.setItem("leftMap", this.leftMap);
+        this.localStorageService.setItem("centerMap", this.centerMap);
+        this.localStorageService.setItem("rightMap", this.rightMap);
+        this.localStorageService.setItem("tournamentInfo", this.tournamentInfo);
+        const translated = [
+          this.translateMapInfo(this.leftMap),
+          this.translateMapInfo(this.centerMap),
+          this.translateMapInfo(this.rightMap),
+        ];
+        if (!this.editable) this.electron.updateMapPool(translated);
+      } catch (error) {
+        this.mapBanSyncWarning = error instanceof Error ? error.message : "Invalid MapBan state";
+        this.mapBanSyncStatus = "Waiting for valid completed veto and matching tricodes";
+      }
+      this.changeDetectorRef.detectChanges();
+    });
+    socket.on("logon_fail", () => {
+      this.mapBanSyncStatus = "MapBan session not found or expired";
+      this.changeDetectorRef.detectChanges();
+    });
+    socket.on("connect_error", () => {
+      this.mapBanSyncStatus = "MapBan unavailable; keeping the last valid map pool";
+      this.changeDetectorRef.detectChanges();
+    });
+    socket.connect();
   }
 
   protected onConnectClick() {
@@ -541,6 +652,7 @@ export class ObserverComponent implements OnInit {
     this.localStorageService.setItem("leftMap", this.leftMap);
     this.localStorageService.setItem("centerMap", this.centerMap);
     this.localStorageService.setItem("rightMap", this.rightMap);
+    this.saveMapBanSettings();
     this.localStorageService.setItem("hotkeys", this.hotkeys);
     this.localStorageService.setItem("sponsors", this.sponsorInfo);
     this.localStorageService.setItem("watermark", this.watermarkInfo);
@@ -687,7 +799,7 @@ export class ObserverComponent implements OnInit {
 
   private translateMapInfo(mapInfo: MapInfo): MapInfoSend {
     const mapInfoSend: MapInfoSend = {
-      type: mapInfo.type.toLowerCase() as "past" | "present" | "future",
+      type: mapInfo.type.toLowerCase() as "past" | "present" | "future" | "disabled",
     };
 
     if (mapInfo.type === "Past" || mapInfo.type === "Future") {
@@ -1033,7 +1145,7 @@ type DisabledMapInfo = BaseMapInfo & {
 export type MapInfo = PastMapInfo | PresentMapInfo | FutureMapInfo | DisabledMapInfo;
 
 type MapInfoSend = {
-  type: "past" | "present" | "future";
+  type: "past" | "present" | "future" | "disabled";
   // Past, Future - map name
   map?: string;
   // Past - score
