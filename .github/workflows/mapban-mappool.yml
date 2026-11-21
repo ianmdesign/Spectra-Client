@@ -1,0 +1,31 @@
+name: MapBan Map Pool Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test BO1, BO3, BO5 and tricode mapping
+        run: node --experimental-strip-types --test angular/src/app/mapinfo/mapban-map-pool.test.mjs
+      - name: Enable Yarn
+        run: corepack enable
+      - name: Install dependencies
+        env:
+          YARN_ENABLE_SCRIPTS: 'false'
+        run: yarn install --immutable
+      - name: Type-check Electron client
+        run: yarn exec tsc --noEmit -p tsconfig.json
+      - name: Build Angular observer UI
+        run: yarn workspace angular build
