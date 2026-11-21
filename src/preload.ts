@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ),
   processAuxInputs: (ingestIp: any, name: any) =>
     ipcRenderer.send("process-aux-inputs", ingestIp, name),
+  updateMapPool: (maps: any[]) => ipcRenderer.send("update-map-pool", maps),
   processLog: (toLog: any) => ipcRenderer.send("process-log", toLog),
   setTraySetting: (setting: any) => ipcRenderer.send("set-tray-setting", setting),
   openExternalLink: (link: string) => ipcRenderer.send("open-external-link", link),
