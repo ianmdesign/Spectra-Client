@@ -81,14 +81,23 @@ export function projectMapBanPool(
   const warning = maps.slice(complete + 1).some(hasScore)
     ? "Later map scores were entered before an earlier map. Using the first unscored map as current."
     : "";
-  const current = complete < count ? complete : null;
+  // If a team has clinched the series (2 in BO3, 3 in BO5), don't
+  // invent a current map from the unplayed future veto picks.
+  const wins = [0, 0];
+  for (let i = 0; i < complete; i++) {
+    const [a, b] = maps[i].score!;
+    if (a !== null && b !== null && a !== b) wins[a > b ? 0 : 1]++;
+  }
+  const clinched = wins.some(winsForTeam => winsForTeam >= Math.ceil(count / 2));
+  const current = complete < count && !clinched ? complete : null;
+  // Completed series: only real scored maps should occupy the strip.
   // For the deciding map, keep the previous two completed maps visible.
-  // Earlier BO3/BO5 maps slide so the most recent finished map is on the left
-  // and the next available map is on the right.
-  const windowStart = count === 1 ? 0 :
-    current === null || current === count - 1 ? count - 3 :
+  // Earlier BO3/BO5 maps slide so the newest completed map is on the left.
+  const windowStart = current === null ? Math.max(0, complete - 3) :
+    count === 1 ? 0 : current === count - 1 ? count - 3 :
     current === 0 ? 0 : current - 1;
-  const visible = maps.slice(windowStart, windowStart + Math.min(3, count));
+  const visible = current === null ? maps.slice(windowStart, complete) :
+    maps.slice(windowStart, windowStart + Math.min(3, count));
 
   const toMapInfo = (map: MapBanSessionMap, absoluteIndex: number): MapInfo => {
     if (absoluteIndex < complete && hasScore(map)) {
