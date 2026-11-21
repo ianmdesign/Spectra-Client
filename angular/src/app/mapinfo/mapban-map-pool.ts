@@ -94,8 +94,8 @@ export function projectMapBanPool(
     if (absoluteIndex < complete && hasScore(map)) {
       return {
         type: "Past", map: map.name,
-        leftScore: map.score![leftSlot],
-        rightScore: map.score![rightSlot],
+        leftScore: Number(map.score![leftSlot]),
+        rightScore: Number(map.score![rightSlot]),
       };
     }
     const picker = pickerFor(map, slots);
