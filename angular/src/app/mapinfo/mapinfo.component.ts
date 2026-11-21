@@ -97,7 +97,7 @@ export class MapinfoComponent implements Validatable, AfterContentInit, OnChange
         valid = valid && this.data.leftScore != null && this.data.rightScore != null;
         break;
       case "Present":
-        if (this.position == "right") {
+        if (this.position == "right" || this.position == "left") {
           valid = ["left", "right", "decider"].includes(this.data.picker);
         } else {
           valid = ["left", "right"].includes(this.data.picker);
