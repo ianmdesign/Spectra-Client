@@ -23,31 +23,31 @@ export default class HotkeyService {
       key: "",
       action: this._techPauseHotkeyAction.bind(this),
       type: HotkeyType.TECH_PAUSE,
-      enabled: true,
+      enabled: false,
     };
     this.hotkeys[HotkeyType.LEFT_TIMEOUT] = {
       key: "",
       action: this._leftTimeoutHotkeyAction.bind(this),
       type: HotkeyType.LEFT_TIMEOUT,
-      enabled: true,
+      enabled: false,
     };
     this.hotkeys[HotkeyType.RIGHT_TIMEOUT] = {
       key: "",
       action: this._rightTimeoutHotkeyAction.bind(this),
       type: HotkeyType.RIGHT_TIMEOUT,
-      enabled: true,
+      enabled: false,
     };
     this.hotkeys[HotkeyType.SWITCH_KDA_CREDITS] = {
       key: "",
       action: this._switchKdaCreditsHotkeyAction.bind(this),
       type: HotkeyType.SWITCH_KDA_CREDITS,
-      enabled: true,
+      enabled: false,
     };
     this.hotkeys[HotkeyType.SHOW_TOAST] = {
       key: "",
       action: this._showToastHotkeyAction.bind(this),
       type: HotkeyType.SHOW_TOAST,
-      enabled: true,
+      enabled: false,
     };
   }
 

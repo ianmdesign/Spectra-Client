@@ -261,10 +261,10 @@ export class ObserverComponent implements OnInit {
     showToast: "L",
     enabled: {
       spikePlanted: false,
-      techPause: true,
-      leftTimeout: true,
-      rightTimeout: true,
-      switchKdaCredits: true,
+      techPause: false,
+      leftTimeout: false,
+      rightTimeout: false,
+      switchKdaCredits: false,
       showToast: false,
     },
   };
@@ -342,17 +342,17 @@ export class ObserverComponent implements OnInit {
     if (!this.hotkeys.enabled) {
       this.hotkeys.enabled = {
         spikePlanted: false,
-        techPause: true,
-        leftTimeout: true,
-        rightTimeout: true,
-        switchKdaCredits: true,
-        showToast: true,
+        techPause: false,
+        leftTimeout: false,
+        rightTimeout: false,
+        switchKdaCredits: false,
+        showToast: false,
       };
     }
     // Hotkey migration for switch KDA/Credits
     if (!this.hotkeys.switchKdaCredits || this.hotkeys.switchKdaCredits === "") {
       this.hotkeys.switchKdaCredits = "I"; // Default hotkey for switch KDA/Credits
-      this.hotkeys.enabled.switchKdaCredits = false; // Enable by default
+      this.hotkeys.enabled.switchKdaCredits = false; // Disabled by default
     }
     // Hotkey migration for show toast
     if (!this.hotkeys.showToast || this.hotkeys.showToast === "") {
