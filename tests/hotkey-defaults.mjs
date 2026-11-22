@@ -7,7 +7,7 @@ const observer=readFileSync("angular/src/app/observer/observer.component.ts","ut
 const service=readFileSync("src/services/hotkeyService.ts","utf8");
 const flags=["spikePlanted","techPause","leftTimeout","rightTimeout","switchKdaCredits","showToast"];
 function group(name,source){
-  const re=new RegExp(name+"\\s*:\\s*\\{([\\s\\S]*?)\\}","m");
+  const re=new RegExp(name+"\\s*(?::|=)\\s*\\{([\\s\\S]*?)\\}","m");
   const match=source.match(re);
   assert.ok(match, "Missing group: "+name);
   for(const key of flags){
